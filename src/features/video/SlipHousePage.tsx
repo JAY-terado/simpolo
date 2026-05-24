@@ -60,6 +60,7 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
   };
 
   const handleScrubberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    resetControlsTimeout();
     const newTime = parseFloat(e.target.value);
     setCurrentTime(newTime);
     if (videoRef.current) {
@@ -98,6 +99,28 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
       console.error('Failed to save progress to localStorage', e);
     }
   };
+
+  const [showControls, setShowControls] = useState(true);
+  const controlsTimeoutRef = useRef<any>(null);
+
+  const resetControlsTimeout = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    controlsTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 2000);
+  };
+
+  useEffect(() => {
+    resetControlsTimeout();
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const [scannerOpen, setScannerOpen] = useState(false);
   const scannerVideoRef = useRef<HTMLVideoElement>(null);
@@ -147,6 +170,7 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
+      resetControlsTimeout();
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => {
@@ -157,6 +181,7 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
 
 
   const handleLanguageChange = (lang: Language) => {
+    resetControlsTimeout();
     if (videoRef.current) {
       const currentTime = videoRef.current.currentTime;
       savedTimeRef.current = currentTime;
@@ -169,6 +194,7 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
   };
 
   const togglePlay = () => {
+    resetControlsTimeout();
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause();
@@ -182,6 +208,7 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
   };
 
   const toggleMute = () => {
+    resetControlsTimeout();
     if (videoRef.current) {
       videoRef.current.muted = !isMuted;
       setIsMuted(!isMuted);
@@ -189,6 +216,7 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
   };
 
   const toggleFullscreen = async () => {
+    resetControlsTimeout();
     const container = containerRef.current;
     const video = videoRef.current;
     if (container) {
@@ -312,6 +340,12 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
             {/* Video Player Card */}
             <div 
               ref={containerRef} 
+              onMouseMove={resetControlsTimeout}
+              onTouchStart={resetControlsTimeout}
+              onMouseLeave={() => {
+                if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
+                setShowControls(false);
+              }}
               className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-black shadow-lg border border-gray-100 group mb-4 flex items-center justify-center"
             >
               <video
@@ -350,11 +384,11 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
               {/* Simple controls bar */}
               <div 
                 className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 transition-opacity duration-300 flex flex-col justify-between p-4 pointer-events-none ${
-                  isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100 bg-black/20'
+                  showControls ? 'opacity-100' : 'opacity-0'
                 }`}
               >
                 {/* Top Bar (controls) */}
-                <div className="flex justify-end gap-2 pointer-events-auto h-fit w-full">
+                <div className={`flex justify-end gap-2 h-fit w-full ${showControls ? 'pointer-events-auto' : 'pointer-events-none'}`}>
                   <button 
                     onClick={(e) => { e.stopPropagation(); toggleMute(); }}
                     className="p-1.5 rounded-full bg-black/45 text-white hover:bg-black/60 cursor-pointer transition-colors"
@@ -372,7 +406,7 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
                 </div>
 
                 {/* Bottom Bar: Scrubber and Time */}
-                <div className="flex items-center gap-3.5 w-full pointer-events-auto mt-auto px-1 pb-1">
+                <div className={`flex items-center gap-3.5 w-full mt-auto px-1 pb-1 ${showControls ? 'pointer-events-auto' : 'pointer-events-none'}`}>
                   <span className="text-white text-xs font-medium select-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                     {formatTime(currentTime)}
                   </span>
