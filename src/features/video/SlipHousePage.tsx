@@ -188,15 +188,39 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
     }
   };
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = async () => {
     const container = containerRef.current;
+    const video = videoRef.current;
     if (container) {
       if (!document.fullscreenElement) {
-        container.requestFullscreen().catch((err) => {
+        try {
+          if (container.requestFullscreen) {
+            await container.requestFullscreen();
+            const anyOrientation = screen.orientation as any;
+            if (anyOrientation && typeof anyOrientation.lock === 'function') {
+              await anyOrientation.lock('landscape').catch((err: any) => {
+                console.warn("Orientation lock rejected:", err);
+              });
+            }
+          } else if (video && (video as any).webkitEnterFullscreen) {
+            // iOS Safari native video player fallback
+            (video as any).webkitEnterFullscreen();
+          }
+        } catch (err) {
           console.error("Error attempting to enable fullscreen:", err);
-        });
+        }
       } else {
-        document.exitFullscreen();
+        try {
+          const anyOrientation = screen.orientation as any;
+          if (anyOrientation && typeof anyOrientation.unlock === 'function') {
+            anyOrientation.unlock();
+          }
+          if (document.exitFullscreen) {
+            await document.exitFullscreen();
+          }
+        } catch (err) {
+          console.error("Error exiting fullscreen:", err);
+        }
       }
     }
   };
