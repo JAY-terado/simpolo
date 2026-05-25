@@ -87,6 +87,7 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
   };
 
   const savedTimeRef = useRef<number>(getInitialTime());
+  const hasSoughtRef = useRef(false);
 
   const saveProgress = (time: number, langCode: string) => {
     try {
@@ -189,6 +190,7 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
     } else {
       saveProgress(savedTimeRef.current, lang.code);
     }
+    hasSoughtRef.current = false; // Reset sought flag for the new video source
     setSelectedLang(lang);
     setDropdownOpen(false);
   };
@@ -354,13 +356,18 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
                 playsInline
                 muted={isMuted}
                 onLoadedMetadata={(e) => {
-                  const video = e.currentTarget;
-                  setDuration(video.duration || 0);
-                  video.currentTime = savedTimeRef.current;
-                  setCurrentTime(savedTimeRef.current);
-                  video.play()
-                    .then(() => setIsPlaying(true))
-                    .catch(() => setIsPlaying(false));
+                  setDuration(e.currentTarget.duration || 0);
+                }}
+                onCanPlay={(e) => {
+                  if (!hasSoughtRef.current) {
+                    const video = e.currentTarget;
+                    video.currentTime = savedTimeRef.current;
+                    setCurrentTime(savedTimeRef.current);
+                    hasSoughtRef.current = true;
+                    video.play()
+                      .then(() => setIsPlaying(true))
+                      .catch(() => setIsPlaying(false));
+                  }
                 }}
                 onPlay={() => setIsPlaying(true)}
                 onPause={() => setIsPlaying(false)}
@@ -370,7 +377,7 @@ export default function SlipHousePage({ userName, userPhone, onBack }: SlipHouse
                   saveProgress(0, selectedLang.code);
                 }}
                 onTimeUpdate={() => {
-                  if (videoRef.current) {
+                  if (videoRef.current && hasSoughtRef.current) {
                     const time = videoRef.current.currentTime;
                     setCurrentTime(time);
                     savedTimeRef.current = time;
